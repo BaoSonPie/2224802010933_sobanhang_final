@@ -28,6 +28,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // ================= CART =================
+  // 👉 lưu giỏ hàng
+  Map<int, int> cart = {};
   // ================= BIẾN =================
   List<Map<String, dynamic>> products = [];
   bool isLoading = false;
@@ -96,6 +99,41 @@ class _HomeScreenState extends State<HomeScreen> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 2,
+        actions: [
+          Stack(
+            children: [
+              // 👉 nút giỏ hàng
+              IconButton(
+                icon: const Icon(Icons.shopping_cart),
+
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => SalesScreen(cart: cart)),
+                  );
+                },
+              ),
+
+              // 👉 badge số lượng
+              if (cart.isNotEmpty)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      cart.length.toString(),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
 
       // ================= BODY (UI NÂNG CẤP - KHÔNG ĐỔI LOGIC) =================
@@ -192,6 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               crossAxisCount: 2,
                                               crossAxisSpacing: 12,
                                               mainAxisSpacing: 12,
+                                              mainAxisExtent: 200,
                                             ),
                                         itemBuilder: (context, index) {
                                           final p = filtered[index];
@@ -570,6 +609,53 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         color: Colors.grey,
                                                       ),
                                                     ),
+                                                    // ================= ADD TO CART =================
+                                                    IconButton(
+                                                      icon: const Icon(
+                                                        Icons.add_circle,
+                                                        color: Colors.blue,
+                                                      ),
+
+                                                      onPressed: () {
+                                                        setState(() {
+                                                          // 👉 thêm vào giỏ
+                                                          int current =
+                                                              cart[p['productId']] ??
+                                                              0;
+                                                          int stock =
+                                                              p['stock'] ?? 0;
+
+                                                          if (current >=
+                                                              stock) {
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            ).showSnackBar(
+                                                              SnackBar(
+                                                                content: Text(
+                                                                  "Hết hàng",
+                                                                ),
+                                                              ),
+                                                            );
+                                                            return;
+                                                          }
+
+                                                          setState(() {
+                                                            cart[p['productId']] =
+                                                                current + 1;
+                                                          });
+                                                        });
+
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              "Đã thêm ${p['name']}",
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
                                                   ],
                                                 ),
                                               ),
@@ -596,7 +682,7 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           // 👉 TAB KHÁC
           : (selectedIndex == 1
-                ? const SalesScreen()
+                ? SalesScreen(cart: cart)
                 : selectedIndex == 2
                 ? const InvoiceScreen()
                 : const StatisticsScreen()),

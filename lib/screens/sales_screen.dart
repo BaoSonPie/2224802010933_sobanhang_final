@@ -5,7 +5,9 @@ import '../services/sync_service.dart';
 
 // 👉 StatefulWidget: vì dữ liệu thay đổi liên tục (số lượng, tổng tiền)
 class SalesScreen extends StatefulWidget {
-  const SalesScreen({super.key});
+  final Map<int, int> cart;
+
+  const SalesScreen({super.key, required this.cart});
 
   @override
   State<SalesScreen> createState() => _SalesScreenState();
@@ -23,6 +25,25 @@ class _SalesScreenState extends State<SalesScreen> {
 
   // 👉 tổng tiền hóa đơn
   double total = 0;
+  void calculateTotal() {
+    double newTotal = 0;
+
+    cart.forEach((id, qty) {
+      var product = products.firstWhere(
+        (p) => p['productId'] == id,
+        orElse: () => {},
+      );
+
+      if (product.isEmpty) return;
+
+      double price = (product['price'] as num).toDouble();
+      newTotal += price * qty;
+    });
+
+    setState(() {
+      total = newTotal;
+    });
+  }
 
   // 👉 hàm lưu hoá đơn
   // ================= HÀM THANH TOÁN =================
@@ -131,8 +152,17 @@ class _SalesScreenState extends State<SalesScreen> {
 
   // 👉 load dữ liệu từ database
   void loadData() async {
-    products = await DBHelper.getProducts(); // lấy toàn bộ sản phẩm
-    setState(() {}); // cập nhật UI
+    final all = await DBHelper.getProducts();
+
+    // 👉 chỉ lấy sản phẩm có trong giỏ
+    products = all
+        .where((p) => widget.cart.containsKey(p['productId']))
+        .toList();
+
+    // 👉 copy cart
+    cart = Map.from(widget.cart); // 🔥 FIX BUG LOGIC
+    calculateTotal(); // 🔥 THÊM DÒNG NÀY
+    setState(() {});
   }
 
   // 👉 cập nhật số lượng khi user nhập
@@ -208,53 +238,126 @@ class _SalesScreenState extends State<SalesScreen> {
                     ),
 
                     // 👉 phần bên phải (ô nhập số lượng)
-                    trailing: SizedBox(
-                      width: 80, // 👉 giới hạn chiều rộng ô input
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ===== GIẢM =====
+                        IconButton(
+                          icon: const Icon(Icons.remove),
+                          onPressed: () {
+                            setState(() {
+                              int qty = cart[p['productId']] ?? 0;
 
-                      child: TextField(
-                        controller: controllers.putIfAbsent(
-                          p['productId'],
-                          () => TextEditingController(),
+                              if (qty > 1) {
+                                cart[p['productId']] = qty - 1;
+
+                                controllers[p['productId']]?.text =
+                                    cart[p['productId']].toString();
+                              } else {
+                                cart.remove(p['productId']);
+
+                                controllers[p['productId']]?.text = "0";
+                              }
+                            });
+
+                            calculateTotal(); // 🔥 THÊM
+                          },
                         ),
-                        textAlign: TextAlign.center, // 👉 căn giữa số
-                        keyboardType:
-                            TextInputType.number, // 👉 chỉ cho nhập số
-                        // 👉 style ô input
-                        decoration: InputDecoration(
-                          hintText: "SL", // 👉 SL = số lượng
-                          // 👉 viền bo tròn đẹp hơn
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+
+                        // ===== SỐ LƯỢNG =====
+                        SizedBox(
+                          width: 50,
+                          child: TextField(
+                            keyboardType: TextInputType.number,
+
+                            // 👉 tạo controller riêng cho mỗi sản phẩm
+                            controller: controllers.putIfAbsent(
+                              p['productId'],
+                              () => TextEditingController(
+                                text: (cart[p['productId']] ?? 0).toString(),
+                              ),
+                            ),
+
+                            // 👉 khi user nhập
+                            onChanged: (value) {
+                              // 👉 parse số
+                              int newQty = int.tryParse(value) ?? 0;
+
+                              // 👉 số lượng cũ
+                              int oldQty = cart[p['productId']] ?? 0;
+
+                              // 🔥 chống spam (rất quan trọng)
+                              if (newQty == oldQty) return;
+
+                              int stock = p['stock'] ?? 0;
+
+                              // ❗ vượt tồn kho
+                              if (newQty > stock) {
+                                newQty = stock;
+
+                                // 👉 update lại ô nhập
+                                controllers[p['productId']]!.value =
+                                    TextEditingValue(
+                                      text: stock.toString(),
+                                      selection: TextSelection.collapsed(
+                                        offset: stock.toString().length,
+                                      ),
+                                    );
+
+                                // 👉 thông báo
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Chỉ còn $stock sản phẩm"),
+                                  ),
+                                );
+                              }
+
+                              // 👉 cập nhật cart
+                              if (newQty <= 0) {
+                                cart.remove(p['productId']);
+                              } else {
+                                cart[p['productId']] = newQty;
+                              }
+
+                              // 👉 cập nhật tổng tiền
+                              calculateTotal();
+                            },
+                            onSubmitted: (_) {
+                              FocusScope.of(context).unfocus();
+                            },
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              contentPadding: EdgeInsets.all(8),
+                              border: OutlineInputBorder(),
+                            ),
                           ),
                         ),
 
-                        // 👉 khi user nhập số lượng
-                        onChanged: (value) {
-                          // 👉 nếu rỗng thì coi như 0
-                          if (value.isEmpty) {
-                            updateQuantity(p['productId'], p['price'], 0);
-                            return;
-                          }
+                        // ===== TĂNG =====
+                        IconButton(
+                          icon: const Icon(Icons.add),
+                          onPressed: () {
+                            setState(() {
+                              int qty = cart[p['productId']] ?? 0;
 
-                          // 👉 parse số
-                          int qty = int.tryParse(value) ?? 0;
+                              if (qty >= p['stock']) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Hết hàng")),
+                                );
+                                return;
+                              }
 
-                          // 👉 chặn số âm (phòng trường hợp bypass)
-                          if (qty < 0) qty = 0;
+                              cart[p['productId']] = qty + 1;
 
-                          // 👉 giới hạn số lượng tối đa
-                          if (qty > 999) {
-                            qty = 999;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Tối đa 999 sản phẩm"),
-                              ),
-                            );
-                          }
+                              // 🔥 UPDATE TEXTFIELD
+                              controllers[p['productId']]?.text =
+                                  cart[p['productId']].toString();
+                            });
 
-                          updateQuantity(p['productId'], p['price'], qty);
-                        },
-                      ),
+                            calculateTotal(); // 🔥 THÊM
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 );
