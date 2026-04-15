@@ -1,0 +1,16 @@
+🚀 🔥 COMMAND (CÓ CHÚ THÍCH CHUẨN)
+flutter pub get
+# 👉 tải thư viện (sqflite, path)
+# 👉 nếu không chạy → lỗi đỏ ngay
+
+flutter clean
+# 👉 xoá cache build cũ
+# 👉 fix lỗi linh tinh
+
+flutter run
+# 👉 chạy app lên máy/giả lập
+
+💣 COMBO CHUẨN (NHỚ CÁI NÀY)
+flutter clean
+flutter pub get
+flutter run

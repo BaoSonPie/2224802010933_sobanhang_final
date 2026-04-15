@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "1060646689103",
+    "project_id": "sobanhang-cacc3",
+    "storage_bucket": "sobanhang-cacc3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1060646689103:android:0be0850c7e55593a348d3a",
+        "android_client_info": {
+          "package_name": "com.example.sobanhang"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1060646689103-eo5e5i7jpr6iuoftshn85ftd9j3g1pci.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.sobanhang",
+            "certificate_hash": "1082f6632a83162070883931e6e046153c832fc5"
+          }
+        },
+        {
+          "client_id": "1060646689103-8d022ejcob4itte00a7lm48sfvmf6re2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUMwDbSoHu2_bvDH3LRfw2xVXpY39Fr3E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1060646689103-8d022ejcob4itte00a7lm48sfvmf6re2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1060646689103-7avde86ce2f5dc1lcrvim8ttf5m43k00.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.sobanhang"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
