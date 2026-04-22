@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:sobanhang/services/sync_service.dart';
 // 👉 UI Flutter
@@ -19,6 +21,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,7 +33,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // ================= CART =================
   // 👉 lưu giỏ hàng
-  Map<int, int> cart = {};
+  Map<String, int> cart = {};
   // ================= BIẾN =================
   List<Map<String, dynamic>> products = [];
   bool isLoading = false;
@@ -47,18 +50,26 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
+  late StreamSubscription sub;
+
   @override
   void initState() {
     super.initState();
 
-    user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      SyncService.loadProductsFromFirebase().then((_) {
+    sub = FirebaseAuth.instance.authStateChanges().listen((user) async {
+      if (user != null) {
+        await SyncService.loadProductsFromFirebase();
         loadProducts();
-      });
-    } else {
-      loadProducts();
-    }
+      } else {
+        loadProducts();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    sub.cancel();
+    super.dispose();
   }
 
   // ================= NAV ITEM =================
@@ -106,12 +117,15 @@ class _HomeScreenState extends State<HomeScreen> {
               IconButton(
                 icon: const Icon(Icons.shopping_cart),
 
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => SalesScreen(cart: cart)),
                   );
-                },
+
+                  loadProducts(); // 🔥 chỉ chạy khi quay lại
+                }, // Sau khi thanh toán → tồn kho đã thay đổi
+                // cần reload lại Home để hiển thị đúng số lượng
               ),
 
               // 👉 badge số lượng
@@ -230,11 +244,40 @@ class _HomeScreenState extends State<HomeScreen> {
                                               crossAxisCount: 2,
                                               crossAxisSpacing: 12,
                                               mainAxisSpacing: 12,
-                                              mainAxisExtent: 200,
+                                              childAspectRatio: 0.75,
                                             ),
                                         itemBuilder: (context, index) {
                                           final p = filtered[index];
+                                          Widget imageWidget;
 
+                                          try {
+                                            if (p['image'] != null &&
+                                                p['image'] != "" &&
+                                                File(p['image']).existsSync()) {
+                                              imageWidget = ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                child: Image.file(
+                                                  File(p['image']),
+                                                  height: 70,
+                                                  width: 70,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              );
+                                            } else {
+                                              imageWidget = const Icon(
+                                                Icons.inventory,
+                                                size: 40,
+                                                color: Colors.blue,
+                                              );
+                                            }
+                                          } catch (e) {
+                                            imageWidget = const Icon(
+                                              Icons.inventory,
+                                              size: 40,
+                                              color: Colors.blue,
+                                            );
+                                          }
                                           return GestureDetector(
                                             onTap: () {
                                               // 👉 GIỮ NGUYÊN LOGIC
@@ -296,6 +339,43 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   // ================= FORM =================
                                                   content: StatefulBuilder(
                                                     builder: (context, setStateDialog) {
+                                                      Widget previewImage;
+
+                                                      try {
+                                                        if (selectedImage !=
+                                                            null) {
+                                                          previewImage =
+                                                              Image.file(
+                                                                selectedImage!,
+                                                                height: 80,
+                                                              );
+                                                        } else if (p['image'] !=
+                                                                null &&
+                                                            p['image'] != "" &&
+                                                            File(
+                                                              p['image'],
+                                                            ).existsSync()) {
+                                                          previewImage =
+                                                              Image.file(
+                                                                File(
+                                                                  p['image'],
+                                                                ),
+                                                                height: 80,
+                                                              );
+                                                        } else {
+                                                          previewImage =
+                                                              const Icon(
+                                                                Icons.image,
+                                                                size: 80,
+                                                              );
+                                                        }
+                                                      } catch (e) {
+                                                        previewImage =
+                                                            const Icon(
+                                                              Icons.image,
+                                                              size: 80,
+                                                            );
+                                                      }
                                                       return SingleChildScrollView(
                                                         child: Column(
                                                           mainAxisSize:
@@ -345,27 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                             ),
 
                                                             // ================= ẢNH =================
-                                                            selectedImage !=
-                                                                    null
-                                                                ? Image.file(
-                                                                    selectedImage!,
-                                                                    height: 100,
-                                                                  )
-                                                                : (p['image'] !=
-                                                                          null &&
-                                                                      p['image'] !=
-                                                                          "")
-                                                                ? Image.file(
-                                                                    File(
-                                                                      p['image'],
-                                                                    ),
-                                                                    height: 100,
-                                                                  )
-                                                                : const Icon(
-                                                                    Icons.image,
-                                                                    size: 80,
-                                                                  ),
-
+                                                            previewImage,
                                                             const SizedBox(
                                                               height: 10,
                                                             ),
@@ -479,6 +539,29 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     // ===== LƯU =====
                                                     ElevatedButton(
                                                       onPressed: () async {
+                                                        // ================= COPY ẢNH =================
+                                                        String imagePath =
+                                                            p['image'] ?? "";
+
+                                                        if (selectedImage !=
+                                                            null) {
+                                                          final dir =
+                                                              await getApplicationDocumentsDirectory();
+
+                                                          final fileName =
+                                                              DateTime.now()
+                                                                  .millisecondsSinceEpoch
+                                                                  .toString();
+
+                                                          final newImage =
+                                                              await selectedImage!
+                                                                  .copy(
+                                                                    "${dir.path}/$fileName.jpg",
+                                                                  );
+
+                                                          imagePath =
+                                                              newImage.path;
+                                                        }
                                                         await DBHelper.updateProduct(
                                                           p['productId'],
                                                           nameController.text,
@@ -492,9 +575,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                                     .text,
                                                               ) ??
                                                               0,
-                                                          selectedImage?.path ??
-                                                              p['image'] ??
-                                                              "",
+                                                          imagePath,
                                                         );
 
                                                         loadProducts();
@@ -558,28 +639,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       MainAxisAlignment.center,
                                                   children: [
                                                     // ================= ẢNH =================
-                                                    (p['image'] != null &&
-                                                            p['image'] != "" &&
-                                                            File(
-                                                              p['image'],
-                                                            ).existsSync())
-                                                        ? ClipRRect(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  12,
-                                                                ),
-                                                            child: Image.file(
-                                                              File(p['image']),
-                                                              height: 70,
-                                                              width: 70,
-                                                              fit: BoxFit.cover,
-                                                            ),
-                                                          )
-                                                        : const Icon(
-                                                            Icons.inventory,
-                                                            size: 40,
-                                                            color: Colors.blue,
-                                                          ),
+                                                    imageWidget,
 
                                                     const SizedBox(height: 10),
 
@@ -604,9 +664,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                                     // ================= TỒN =================
                                                     Text(
-                                                      "Tồn: ${p['stock']}",
-                                                      style: const TextStyle(
-                                                        color: Colors.grey,
+                                                      (p['stock'] ?? 0) > 0
+                                                          ? "Còn: ${p['stock'] ?? 0}"
+                                                          : "Hết hàng",
+                                                      style: TextStyle(
+                                                        color:
+                                                            (p['stock'] ?? 0) >
+                                                                0
+                                                            ? Colors.green
+                                                            : Colors.red,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                       ),
                                                     ),
                                                     // ================= ADD TO CART =================
@@ -624,7 +692,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                                               0;
                                                           int stock =
                                                               p['stock'] ?? 0;
-
+                                                          if (stock <= 0) {
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            ).showSnackBar(
+                                                              SnackBar(
+                                                                content: Text(
+                                                                  "Sản phẩm đã hết hàng",
+                                                                ),
+                                                              ),
+                                                            );
+                                                            return;
+                                                          }
                                                           if (current >=
                                                               stock) {
                                                             ScaffoldMessenger.of(
@@ -639,10 +718,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                             return;
                                                           }
 
-                                                          setState(() {
-                                                            cart[p['productId']] =
-                                                                current + 1;
-                                                          });
+                                                          cart[p['productId']] =
+                                                              current + 1;
                                                         });
 
                                                         ScaffoldMessenger.of(

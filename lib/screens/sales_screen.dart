@@ -5,7 +5,7 @@ import '../services/sync_service.dart';
 
 // 👉 StatefulWidget: vì dữ liệu thay đổi liên tục (số lượng, tổng tiền)
 class SalesScreen extends StatefulWidget {
-  final Map<int, int> cart;
+  final Map<String, int> cart;
 
   const SalesScreen({super.key, required this.cart});
 
@@ -15,13 +15,13 @@ class SalesScreen extends StatefulWidget {
 
 class _SalesScreenState extends State<SalesScreen> {
   // 👉 quản lý TextField để reset sau khi thanh toán
-  Map<int, TextEditingController> controllers = {};
+  Map<String, TextEditingController> controllers = {};
   // 👉 danh sách sản phẩm lấy từ database
   List<Map<String, dynamic>> products = [];
 
   // 👉 giỏ hàng (cart)
   // key = productId, value = số lượng
-  Map<int, int> cart = {};
+  Map<String, int> cart = {};
 
   // 👉 tổng tiền hóa đơn
   double total = 0;
@@ -89,10 +89,15 @@ class _SalesScreenState extends State<SalesScreen> {
 
     // ================= LƯU HÓA ĐƠN =================
     // 👉 thêm hóa đơn vào bảng invoices
-    int invoiceId = await DBHelper.insertInvoice({
-      'date': DateTime.now().toString(), // 👉 ngày hiện tại
-      'total': total, // 👉 tổng tiền
-      'isSynced': 0, // 👉 chưa sync Firebase
+    // 🔥 tạo ID dạng string
+    String invoiceId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    await DBHelper.insertInvoice({
+      'invoiceId': invoiceId, // 🔥 thêm dòng này
+      'date': DateTime.now().toString(),
+      'total': total,
+      'isSynced': 0,
+      'updatedAt': DateTime.now().toIso8601String(),
     });
 
     // 👉 đồng bộ hóa đơn lên Firebase (nếu có login)
@@ -116,8 +121,9 @@ class _SalesScreenState extends State<SalesScreen> {
 
       // ================= LƯU CHI TIẾT HÓA ĐƠN =================
       await DBHelper.insertInvoiceDetail({
-        'invoiceId': invoiceId, // 👉 liên kết với hóa đơn
-        'productId': item.key, // 👉 id sản phẩm
+        "detailId": DateTime.now().millisecondsSinceEpoch.toString(),
+        'invoiceId': invoiceId.toString(), // 🔥 ép string
+        'productId': item.key.toString(), // 🔥 ép string
         'productName': product['name'], // 👉 tên sản phẩm
         'quantity': item.value, // 👉 số lượng mua
         'price': product['price'], // 👉 giá tại thời điểm bán
@@ -133,6 +139,9 @@ class _SalesScreenState extends State<SalesScreen> {
 
     // ================= RESET GIỎ HÀNG =================
     cart.clear(); // 👉 xoá toàn bộ giỏ hàng
+    widget.cart.clear();
+    // widget.cart là giỏ hàng từ Home truyền sang
+    // nếu không clear → Home vẫn hiển thị số lượng cũ → sai dữ liệu
     total = 0; // 👉 reset tổng tiền
 
     // 👉 reset toàn bộ ô nhập số lượng
@@ -166,7 +175,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // 👉 cập nhật số lượng khi user nhập
-  void updateQuantity(int productId, double price, int value) {
+  void updateQuantity(String productId, double price, int value) {
     // 👉 lưu số lượng vào cart
     // 👉 nếu user nhập <= 0 → xoá khỏi giỏ hàng
     if (value <= 0) {

@@ -4,7 +4,9 @@ import 'package:sobanhang/services/sync_service.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../database/db_helper.dart';
-// 👉 gọi database SQLite để lưu sản phẩm
+// // 👉 gọi database SQLite để lưu sản phẩm
+// import 'package:path_provider/path_provider.dart';
+import '../services/images_service.dart';
 
 // ================= DIALOG =================
 class AddProductDialog extends StatefulWidget {
@@ -66,7 +68,18 @@ class _AddProductDialogState extends State<AddProductDialog> {
     // 👉 parse dữ liệu
     double price = double.tryParse(priceController.text) ?? 0;
     int stock = int.tryParse(stockController.text) ?? 0;
+    // ================= COPY ẢNH =================
+    // String imagePath = "";
 
+    // if (selectedImage != null) {
+    //   final dir = await getApplicationDocumentsDirectory();
+
+    //   final fileName = DateTime.now().millisecondsSinceEpoch.toString();
+
+    //   final newImage = await selectedImage!.copy("${dir.path}/$fileName.jpg");
+
+    //   imagePath = newImage.path;
+    // }
     // 👉 validate
     if (price <= 0) {
       ScaffoldMessenger.of(
@@ -82,15 +95,34 @@ class _AddProductDialogState extends State<AddProductDialog> {
       return;
     }
 
-    // ================= LƯU DATABASE =================
+    // ================= TẠO ID CHUNG =================
+    String id = DateTime.now().millisecondsSinceEpoch.toString();
+    // 👉 đảm bảo Firebase + SQLite dùng chung ID
+
+    // ================= INSERT DATABASE =================
+    String imageUrl = "";
+
+    if (selectedImage != null) {
+      imageUrl = await ImageService.uploadImage(File(selectedImage!.path));
+    }
     await DBHelper.insertProduct({
-      "name": nameController.text,
-      "price": price,
-      "stock": stock,
-      // 👉 lưu đường dẫn ảnh (nếu chưa chọn thì để rỗng)
-      "image": selectedImage?.path ?? "",
+      "productId": id, // 🔥 ID CHUNG (QUAN TRỌNG NHẤT)
+
+      "name": nameController.text, // 👉 tên sản phẩm
+
+      "price": price, // 👉 giá
+
+      "stock": stock, // 👉 tồn kho
+
+      "image": imageUrl, // 👉 đường dẫn ảnh
+
       "isActive": 1, // 👉 còn bán
+
       "isSynced": 0, // 👉 chưa sync Firebase
+
+      "updatedAt": DateTime.now().toIso8601String(), // 👉 thời gian cập nhật
+
+      "deleted": 0, // 👉 chưa xoá
     });
 
     await SyncService.syncProducts(); // 👉 reload lại Home

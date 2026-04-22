@@ -46,6 +46,7 @@ class _ProductScreenState extends State<ProductScreen> {
     }
 
     await DBHelper.insertProduct({
+      "productId": DateTime.now().millisecondsSinceEpoch.toString(),
       "name": edtName.text,
       "price": price,
       "stock": 0,
@@ -62,7 +63,7 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   // 👉 xoá sản phẩm
-  void deleteProduct(int id) async {
+  void deleteProduct(String id) async {
     await DBHelper.deleteProduct(id);
     loadData();
   }
@@ -153,7 +154,9 @@ class _ProductScreenState extends State<ProductScreen> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    deleteProduct(product['productId']);
+                                    deleteProduct(
+                                      product['productId'].toString(),
+                                    );
                                     Navigator.pop(context);
                                   },
                                   child: const Text("Xoá"),

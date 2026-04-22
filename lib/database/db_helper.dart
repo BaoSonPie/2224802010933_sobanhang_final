@@ -14,22 +14,24 @@ class DBHelper {
       version: 1,
 
       onCreate: (db, version) async {
-        // 👉 tạo bảng lần đầu
+        // ================= CREATE TABLE PRODUCTS =================
         await db.execute('''
-          CREATE TABLE products(
-            productId INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            price REAL,
-            stock INTEGER,
-            image TEXT, 
-            isActive INTEGER, 
-            isSynced INTEGER DEFAULT 0
-          )
-        ''');
+CREATE TABLE products(
+  productId TEXT PRIMARY KEY, 
+  name TEXT,                 
+  price REAL,                  
+  stock INTEGER,              
+  image TEXT,                
+  isActive INTEGER,          
+  isSynced INTEGER DEFAULT 0,
+  updatedAt TEXT,             
+  deleted INTEGER DEFAULT 0   
+)
+''');
         // ===== TABLE INVOICES =====
         await db.execute('''
           CREATE TABLE invoices(
-            invoiceId INTEGER PRIMARY KEY AUTOINCREMENT,
+            invoiceId TEXT PRIMARY KEY,
             date TEXT,
             total REAL,
             isSynced INTEGER DEFAULT 0
@@ -39,9 +41,9 @@ class DBHelper {
         // ===== TABLE INVOICE DETAILS =====
         await db.execute('''
           CREATE TABLE invoice_details(
-            detailId INTEGER PRIMARY KEY AUTOINCREMENT,
-            invoiceId INTEGER,
-            productId INTEGER,
+            detailId TEXT PRIMARY KEY, 
+invoiceId TEXT,           
+productId TEXT,            
             productName TEXT,
             quantity INTEGER,
             price REAL
@@ -80,7 +82,7 @@ class DBHelper {
   }
 
   // 👉 ❗ SOFT DELETE (ngừng bán thay vì xoá)
-  static Future<void> deleteProduct(int id) async {
+  static Future<void> deleteProduct(String id) async {
     final db = await getDB();
 
     await db.update(
@@ -112,7 +114,7 @@ class DBHelper {
 
   // 👉 lấy chi tiết hóa đơn theo id
   static Future<List<Map<String, dynamic>>> getInvoiceDetails(
-    int invoiceId,
+    String invoiceId,
   ) async {
     final db = await getDB();
     return db.query(
@@ -124,7 +126,7 @@ class DBHelper {
   // ================= DELETE INVOICE =================
 
   // 👉 xoá hóa đơn + chi tiết
-  static Future<void> deleteInvoice(int invoiceId) async {
+  static Future<void> deleteInvoice(String invoiceId) async {
     final db = await getDB();
 
     // 👉 xoá chi tiết trước
@@ -208,7 +210,7 @@ class DBHelper {
   // ================= STOCK =================
 
   // 👉 trừ tồn kho sau khi bán
-  static Future<void> updateProductStock(int productId, int newStock) async {
+  static Future<void> updateProductStock(String productId, int newStock) async {
     final db = await getDB();
 
     await db.update(
@@ -285,7 +287,7 @@ class DBHelper {
 
   // 👉 hàm cập nhật sản phẩm
   static Future<void> updateProduct(
-    int id, // 👉 id sản phẩm cần sửa
+    String id, // 👉 id sản phẩm cần sửa
     String name, // 👉 tên mới
     double price, // 👉 giá mới
     int stock,

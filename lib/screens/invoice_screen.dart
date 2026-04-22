@@ -48,9 +48,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   // ================= SHOW DETAIL =================
-  Future<void> showInvoiceDetail(int invoiceId) async {
+  Future<void> showInvoiceDetail(String invoiceId) async {
     // 👉 lấy chi tiết hóa đơn
-    final details = await DBHelper.getInvoiceDetails(invoiceId);
+    final details = await DBHelper.getInvoiceDetails(invoiceId.toString());
 
     if (!mounted) return;
 

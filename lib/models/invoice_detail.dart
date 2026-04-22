@@ -1,7 +1,7 @@
 class InvoiceDetail {
-  final int? detailId;
-  final int invoiceId;
-  final int productId;
+  final String? detailId;
+  final String invoiceId;
+  final String productId;
   final String productName;
   final int quantity;
   final double price;
@@ -19,9 +19,9 @@ class InvoiceDetail {
 
   factory InvoiceDetail.fromMap(Map<String, dynamic> map) {
     return InvoiceDetail(
-      detailId: map['detailId'] as int?,
-      invoiceId: map['invoiceId'] as int? ?? 0,
-      productId: map['productId'] as int? ?? 0,
+      detailId: map['detailId']?.toString(),
+      invoiceId: map['invoiceId'].toString(),
+      productId: map['productId'].toString(),
       productName: map['productName'] as String? ?? '',
       quantity: map['quantity'] as int? ?? 0,
       price: (map['price'] as num?)?.toDouble() ?? 0,

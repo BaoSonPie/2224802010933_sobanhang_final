@@ -1,5 +1,5 @@
 class Product {
-  int? productId;
+  String? productId;
   // 👉 id (tự tăng trong database)
 
   String name;
